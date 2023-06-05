@@ -21,14 +21,13 @@ class AppColors {
 
   static final HexColor white = HexColor('#FFFFFF');
   static final HexColor black = HexColor('#101010');
-
   static final HexColor border = HexColor('#E9E9E9');
   static final HexColor shadow = HexColor('#000000');
   static final HexColor red = HexColor('#FF0000');
   static final HexColor grey = HexColor('#CED0DE');
 
   static final HexColor background = HexColor('#FAFAFA');
-  static final HexColor background1 = HexColor('#F2F4F8');
+  static final HexColor background1 = HexColor('#26294b');
 
 }
 
@@ -37,14 +36,15 @@ class HexColor extends Color {
     try {
       hexColor = hexColor.toUpperCase().replaceAll('#', '');
       if (hexColor.length == 6) {
-        hexColor = 'FF' + hexColor;
+        hexColor = 'FF$hexColor';
       } else if (hexColor.length == 5) {
-        hexColor = 'FF' + hexColor + '0';
+        hexColor = 'FF${hexColor}0';
       }
       return int.parse(hexColor, radix: 16);
     } catch (_) {
       return int.parse('FFFFFF', radix: 16);
     }
   }
+
   HexColor(final String hexColor) : super(_getColorFromHex(hexColor));
 }

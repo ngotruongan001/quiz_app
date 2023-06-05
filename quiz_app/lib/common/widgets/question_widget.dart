@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:quiz_app/themes/app_colors.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:quiz_app/themes/styles_text.dart';
 
 class QuestionWidget extends StatelessWidget {
   const QuestionWidget(
@@ -17,13 +18,32 @@ class QuestionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       alignment: Alignment.centerLeft,
-      child: Text(
-        'Question ${indexAction + 1}/$totalQuestions: $question',
-        style: TextStyle(
-          fontSize: 24.0,
-          color: AppColors.white,
-        ),
-      ),
+      child: Row(
+        children: [
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 40),
+                child: Text(
+                  'Question ${indexAction + 1}/$totalQuestions',
+                  style: StylesText.body2,
+                ),
+              ),
+              SizedBox(
+                width: 350.w,
+                height: 150.h,
+                child: Text(
+                  question,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: StylesText.body2,
+                ),
+              ),
+            ],
+          )
+        ],
+      )
     );
   }
 }

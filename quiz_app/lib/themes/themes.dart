@@ -9,7 +9,7 @@ class AppTheme {
       brightness: Brightness.light,
       primaryColor: AppColors.white,
       backgroundColor: AppColors.white,
-      scaffoldBackgroundColor: AppColors.white,
+      scaffoldBackgroundColor: AppColors.background1,
       visualDensity: VisualDensity.adaptivePlatformDensity,
       fontFamily: AppFont.appFont,
       indicatorColor: AppColors.white,
