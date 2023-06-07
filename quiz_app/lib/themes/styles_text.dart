@@ -49,10 +49,10 @@ class StylesText {
   );
 
   static final body4 = TextStyle(
-    fontSize: 14.sp,
+    fontSize: 20.sp,
     fontFamily: AppFont.appFont,
     fontWeight: FontWeight.w800,
-    color: AppColors.neutral2,
+    color: AppColors.white,
   );
 
   static final caption1 = TextStyle(

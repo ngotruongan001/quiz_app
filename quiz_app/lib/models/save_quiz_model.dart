@@ -1,20 +1,17 @@
-import 'package:quiz_app/models/your_quiz_model.dart';
+import 'package:quiz_app/models/your_answer_model.dart';
 
 class SaveQuiz {
-  int countCorrect = 0;
-  List<YourQuiz> listYourQuiz;
+  int countCorrect;
+  int seconds;
+  List<YourAnswer> listYourQuiz;
 
-  SaveQuiz({required this.countCorrect, required this.listYourQuiz});
+  SaveQuiz({required this.countCorrect, required this.listYourQuiz, required this.seconds});
   void addCount() {
     countCorrect = countCorrect + 1;
   }
 
-  void remove() {
-    countCorrect = 0;
-    listYourQuiz = [];
-  }
 
-  void addListQuiz(YourQuiz quiz) {
+  void addListQuiz(YourAnswer quiz) {
     listYourQuiz.add(quiz);
   }
 

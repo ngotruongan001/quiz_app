@@ -1,49 +1,36 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:quiz_app/bloc/home/home_cubit.dart';
+import 'package:quiz_app/bloc/question/question_cubit.dart';
 import 'package:quiz_app/common/widgets/answer_widget.dart';
 import 'package:quiz_app/common/widgets/button_widget.dart';
 import 'package:quiz_app/common/widgets/result_box_widget.dart';
 import 'package:quiz_app/data/repository.dart';
-import 'package:quiz_app/models/save_quiz_model.dart';
-import 'package:quiz_app/models/your_quiz_model.dart';
 import 'package:quiz_app/themes/app_colors.dart';
 import 'package:quiz_app/themes/styles_text.dart';
 import 'package:quiz_app/utils/app_images.dart';
 import '../../common/widgets/question_widget.dart';
 
 class QuestionPage extends StatefulWidget {
-  const QuestionPage({Key? key}) : super(key: key);
+  const QuestionPage({Key? key, required this.homeBloc}) : super(key: key);
+  final HomeCubit homeBloc;
 
   @override
   State<QuestionPage> createState() => _QuestionPageState();
 }
 
 class _QuestionPageState extends State<QuestionPage> {
-  var chooseAnswerValueNotifier = ValueNotifier("");
-  var indexQuizValueNotifier = ValueNotifier(0);
-  var listQuiz = [];
-  var isLoading = true;
-  var resultYourQuiz = SaveQuiz(countCorrect: 0, listYourQuiz: []);
-  int _seconds = 0;
-  Timer? _timer;
-
+  var bloc = QuizCubit();
   var repo = Repository();
-
-  void getData() async {
-    var list = await repo.getData();
-    setState(() {
-      listQuiz = list;
-      isLoading = false;
-    });
-  }
 
   @override
   void initState() {
     super.initState();
     print("init State");
-    startTimer();
-    getData();
+    bloc.initData();
+    bloc.startTimer();
   }
 
   @override
@@ -55,32 +42,50 @@ class _QuestionPageState extends State<QuestionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ValueListenableBuilder(
-        valueListenable: indexQuizValueNotifier,
+        valueListenable: bloc.indexQuizValueNotifier,
         builder: (context, index, child) {
           return SafeArea(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                isLoading
-                    ? Center(
-                        child: Text(
-                          "Loading...",
-                          style: StylesText.header1
-                              .copyWith(color: AppColors.white),
-                        ),
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
+                // từ bạn, đợi show lịch sử thử
+                BlocConsumer(
+                  bloc: bloc,
+                  builder: (context, state) {
+                    if (state is QuizLoading || state is QuizInitial) {
+                      return _widgetTextMessage("Loading...");
+                    }
+                    if (state is QuizGetDataSuccess) {
+                      var listQuiz = state.listData;
+                      print("listQuiz ${listQuiz}");
+                      return Column(
+                        // ý t là show lên sao câu hỏi vẫn hiện ra ở nền
                         children: [
                           _exitQuestion(),
-                          _question(
-                              index, listQuiz, listQuiz[index].question ?? ""),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _question(index, listQuiz.length, listQuiz[index].question ?? ""),
+                            ],
+                          ),
                           _widgetListAnswer(listQuiz[index].allAnswer ?? []),
-                          _buttonNextQuestion(handleSaveAnswer, index, () {
-                            onPressedSubmit(showSubmit);
-                          }, onPressedNext),
+                          _buttonNextQuestion(bloc.handleSaveAnswer, index, () {
+                            bloc.onPressedSubmit();
+                          }, bloc.onPressedNext),
                         ],
-                      ),
+                      );
+                    }
+                    if (state is QuizGetDataFailed) {
+                      return _widgetTextMessage(state.errorMessage);
+                    }
+                    if(state is QuizSubmit){
+                      return _widgetTextMessage(state.message);
+                    }
+                    return _widgetTextMessage("....");
+                  },
+                  listener: (context, state) {},
+                ),
               ],
             ),
           );
@@ -114,17 +119,26 @@ class _QuestionPageState extends State<QuestionPage> {
     );
   }
 
-  Widget _question(index, listQuiz, question) {
+  Widget _widgetTextMessage(String message) {
+    return Center(
+      child: Text(
+        message,
+        style: StylesText.header1.copyWith(color: AppColors.white),
+      ),
+    );
+  }
+
+  Widget _question(int index, int length,String question) {
     return QuestionWidget(
       indexAction: index,
       question: question,
-      totalQuestions: listQuiz.length,
+      totalQuestions: length,
     );
   }
 
   Widget _widgetListAnswer(List<String> allQuestion) {
     return ValueListenableBuilder(
-      valueListenable: chooseAnswerValueNotifier,
+      valueListenable: bloc.chooseAnswerValueNotifier,
       builder: (context, value, child) {
         return Column(
           children: [
@@ -146,30 +160,32 @@ class _QuestionPageState extends State<QuestionPage> {
     return AnswerWidget(
       isCheck: isChecked,
       answer: answer,
-      onPressed: () => onPessedCheckedAnswer(answer),
+      onPressed: () => bloc.onPressedCheckedAnswer(answer),
     );
   }
 
   Widget _buttonNextQuestion(
-      handleSaveAnswer, index, Function onPressedSubmit, onPressedNext) {
+      handleSaveAnswer, index, Function() onPressedSubmit, onPressedNext) {
     return ValueListenableBuilder(
-      valueListenable: chooseAnswerValueNotifier,
+      valueListenable: bloc.chooseAnswerValueNotifier,
       builder: (context, value, child) {
         return Padding(
           padding: EdgeInsets.only(top: 30.h),
           child: MainButton(
             onPressed: () {
-              handleSaveAnswer();
               value.isEmpty
                   ? null
-                  : index == (listQuiz.length - 1)
-                      ? onPressedSubmit()
-                      : onPressedNext();
+                  : bloc.handleSaveAnswer();
+              value.isEmpty
+                  ? null
+                  : index == (bloc.listQuiz.length - 1)
+                  ? showSubmit()
+                  : bloc.onPressedNext();
             },
             height: 60.h,
             radius: 60.r,
             minWidth: 0.7.sw,
-            title: index == (listQuiz.length - 1) ? "Submit" : "Next",
+            title: index == (bloc.listQuiz.length - 1) ? "Submit" : "Next",
             backgroundColor: value.isEmpty ? Colors.grey : Colors.red,
           ),
         );
@@ -178,24 +194,24 @@ class _QuestionPageState extends State<QuestionPage> {
   }
 
   void showSubmit() {
-    var score =
-        resultYourQuiz.countCorrect / resultYourQuiz.listYourQuiz.length * 100;
+    widget.homeBloc.addData(bloc.resultYourQuiz);
+    bloc.onPressedSubmit();
+    var score = bloc.resultYourQuiz.countCorrect /
+        bloc.resultYourQuiz.listYourQuiz.length * 100;
 
     Widget _widgetContent() {
       return ResultBox(
         title: score >= 50 ? "Congratulation!" : "Completed!",
         iconShow: score >= 50 ? AssetPNG.done : AssetPNG.replay,
         message: score >= 50 ? "You are amazing!!" : "Better luck next time!",
-        time: '$_seconds',
+        time: '${bloc.seconds}',
         function: () {
-          resultYourQuiz.remove();
-          getData();
-          startTimer();
+          bloc.onPressedPlayAgain();
           onPressedNavigatePop();
         },
         titleButton: "Play Again",
-        score: '${resultYourQuiz.countCorrect}',
-        questions: '${resultYourQuiz.listYourQuiz.length}',
+        score: '${bloc.resultYourQuiz.countCorrect}',
+        questions: '${bloc.resultYourQuiz.listYourQuiz.length}',
       );
     }
 
@@ -216,68 +232,8 @@ class _QuestionPageState extends State<QuestionPage> {
     );
   }
 
-  void onPessedCheckedAnswer(String value) {
-    chooseAnswerValueNotifier.value = value;
-  }
-
   void onPressedNavigatePop() {
     Navigator.pop(context);
   }
 
-  void handleSaveAnswer() {
-    bool isCorrect = listQuiz[indexQuizValueNotifier.value].correctAnswer ==
-        chooseAnswerValueNotifier.value;
-    var yourAnswer = YourQuiz(
-        correctAnswer:
-            listQuiz[indexQuizValueNotifier.value].correctAnswer ?? '',
-        allQuestion: listQuiz[indexQuizValueNotifier.value].allAnswer ?? [],
-        yourChoose: chooseAnswerValueNotifier.value,
-        isCorrect: isCorrect);
-
-    if (isCorrect) {
-      resultYourQuiz.addCount();
-    }
-    resultYourQuiz.addListQuiz(yourAnswer);
-  }
-
-  void onPressedNext() {
-    indexQuizValueNotifier.value = indexQuizValueNotifier.value + 1;
-    chooseAnswerValueNotifier.value = "";
-  }
-
-  void onPressedSubmit(Function showSubmit) {
-    chooseAnswerValueNotifier.value = "";
-    indexQuizValueNotifier.value = 0;
-    print('resultYourQuizz $resultYourQuiz');
-    print('time ${formatSeconds(_seconds)}s');
-    setState(() {
-      isLoading = true;
-    });
-    cancelTime();
-    showSubmit();
-  }
-
-  void startTimer() {
-    _seconds = 0;
-    const oneSecond = Duration(seconds: 1);
-    _timer = Timer.periodic(oneSecond, (Timer timer) {
-      _seconds++;
-    });
-  }
-
-  void cancelTime() {
-    _timer?.cancel();
-  }
-
-  String formatSeconds(int seconds) {
-    int minutes = (seconds ~/ 60); // Calculate the minutes
-    int remainingSeconds = seconds % 60; // Calculate the remaining seconds
-
-    String minutesStr =
-        minutes.toString().padLeft(2, '0'); // Ensure two-digit format
-    String secondsStr =
-        remainingSeconds.toString().padLeft(2, '0'); // Ensure two-digit format
-
-    return '$minutesStr:$secondsStr';
-  }
 }
